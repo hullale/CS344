@@ -2,11 +2,11 @@ stats {-rows|-cols} [input_file]
 
 Numbers are separated by tabs, lines by newlines
 
-Check for the correct number of arguments, failure to standard error
+DONE: Check for the correct number of arguments, failure to standard error
 
-Check whether file is readable, or exists, stderr if not
+DONE: Check whether file is readable, or exists, stderr if not
 
--rows and -cols should work for anything that starts with its character eg. -rad would do rows
+DONE: -rows and -cols should work for anything that starts with its character eg. -rad would do rows
 
 Stats output to stdout
 
@@ -16,7 +16,7 @@ You can assume each row will be less than 1000 bytes long, unix limits this, but
 
 If using temp files, make sure they include process id's in name to allow for simultaneous runs. Remove files when done.
 
-Use the trap command to catch interrupt, hangup, and terminate signals to remove temp files if terminates unexpectedly
+DONE: Use the trap command to catch interrupt, hangup, and terminate signals to remove temp files if terminates unexpectedly
 
 Values and results must be whole numbers, round like normal, 7.5 to 8, 7.4 to 7
 
