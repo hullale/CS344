@@ -1,0 +1,57 @@
+#!/bin/bash
+########## Notes for myself ###########
+# 0 is stdin
+# 1 is stdout
+# 2 is stderr
+
+########## Functions ###########
+show_usage_error ()
+{
+    echo "Usage: stats {-rows|-cols} [file]" >&2
+    exit 1
+}
+
+show_empty_file_error ()
+{
+    echo "stats: Input empty. Please provide valid input." >&2
+    exit 1
+}
+
+show_invalid_file_error ()
+{
+    echo "stats: Cannot read file. Please check permissions." >&2
+    exit 1
+}
+
+handle_unexpected_termination_error ()
+{
+    #TODO: Delete temp files if they exist, also make sure clear doesn't break anything
+    echo "CTRL+C received. Exiting." >&2
+    exit 1
+}
+
+#####################################################
+#####################################################
+########## "stats" script "main"-ish code ###########
+
+# Handle unexpected termination
+trap handle_unexpected_termination_error INT HUP TERM
+
+# Determine if we're getting data from stdin or a file
+if [ $# -eq 0 ] || [ $# -gt 2 ]; then
+    # No arguments or incorrect, throw an error
+    show_usage_error
+elif [ $# -eq 1 ]; then
+    is_stdin=1
+elif [ $# -eq 2 ]; then
+    is_stdin=0
+fi
+
+# Determine if we're doing statistics based on columns or rows
+if [[ $1 == -r* ]]; then
+    is_rows=1
+elif [[ $1 == -c* ]]; then
+    is_rows=0
+else
+    show_usage_error
+fi
