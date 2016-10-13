@@ -1,4 +1,17 @@
 #!/bin/bash
+########## Global Variables ###########
+awk_transpose='{
+    for ( i=1; i <= NF; i++ )
+        row[i] = row[i]((row[i])?" ":"")$i
+}
+
+END{
+    for ( x = 1; x <= length(row) ; x++ )
+        print row[x]
+}'
+
+master_pid=$$
+
 ########## Functions ###########
 show_usage_error ()
 {
@@ -18,12 +31,25 @@ show_invalid_file_error ()
     exit 1
 }
 
+remove_temp_if_exist ()
+{
+    if [ -e ${master_pid}"_"transposed ]; then
+        rm -f ${master_pid}"_"transposed
+    fi
+
+    if [ -e ${master_pid}"_"temp ]; then
+        rm -f ${master_pid}"_"temp
+    fi
+
+}
+
 handle_unexpected_termination_error ()
 {
-    #TODO: Delete temp files if they exist, also make sure clear doesn't break anything
+    remove_temp_if_exist
     echo "CTRL+C received. Exiting." >&2
     exit 1
 }
+
 
 #####################################################
 #####################################################
@@ -57,13 +83,25 @@ if [ ${is_stdin} -eq 0 ]; then
     if [ ! -e $2 ] || [ ! -r $2 ] || [ ! -f $2 ]; then
         show_invalid_file_error
     fi
-    exec 3<> $2
 fi
 
 # If stats should be on columns, translate table so the columns are the new rows and rows are the new columns
 # This will make it so the same stats math can be used to generate the correct data
-if [ ${is_rows} -eq 0 ]; then
-    echo -n
+if [ ${is_rows} -eq 0 ] && [ ${is_stdin} -eq 0 ]; then
+    cat $2 | awk "${awk_transpose}" > ${master_pid}"_"transposed
+    exec 3<> ${master_pid}"_"transposed
+elif [ ${is_rows} -eq 0 ] && [ ${is_stdin} -eq 1 ]; then
+    while read current_line
+    do
+        echo -e ${current_line} >> ${master_pid}"_"temp
+    done
+
+    cat ${master_pid}"_"temp | awk "${awk_transpose}" > ${master_pid}"_"transposed
+    exec 3<> ${master_pid}"_"transposed
+    is_stdin=0
+
+elif [ ${is_rows} -eq 1 ] && [ ${is_stdin} -eq 0 ]; then
+    exec 3<> $2
 fi
 
 # Now we perform the stats math operations on the data
@@ -132,6 +170,7 @@ if [ ${is_rows} -eq 1 ]; then
         echo -e "${averages[count]}\t${medians[count]}"
         ((count = count + 1))
     done
+    remove_temp_if_exist
     exit 0
 # Pretty printing for columns calculations
 else
@@ -162,6 +201,6 @@ else
         ((count = count + 1))
     done
     echo
-
+    remove_temp_if_exist
     exit 0
 fi
