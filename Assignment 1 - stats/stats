@@ -72,27 +72,98 @@ if [ ${is_rows} -eq 0 ]; then
 fi
 
 # Now we perform the stats math operations on the data
+line_count=0
+declare -a averages
+declare -a medians
 
-if [ ${is_stdin} -eq 1 ]; then
-    read current_line
-    read current_line
-else
-    read -u 3 current_line
-    read -u 3 current_line
-fi
-
-sum=0
-count=0
-avg=0
-newline="\n"
-sortable=""
-
-for word in ${current_line}
+while [ 1 ];
 do
-    sortable=${sortable}${newline}${word}
-    ((sum = word + sum))
-    ((count = count + 1))
-done
-((avg = sum/count))
+    if [ ${is_stdin} -eq 1 ]; then
+        read current_line
+    else
+        read -u 3 current_line
+    fi
 
-echo -e ${sortable} | sort -n
+    read_result=$?
+
+    if [ ${read_result} -eq 1 ] && [ ${line_count} -eq 0 ]; then
+        show_empty_file_error
+    elif [ ${read_result} -eq 1 ]; then
+        break
+    fi
+
+    sum=0
+    count=0
+    avg=0
+    newline="\n"
+    numbers_string=""
+
+    # This part does the summing and averaging, and adds the numbers to a new string so it can be parsed by sort
+    for word in ${current_line}
+    do
+        numbers_string=${numbers_string}${newline}${word}
+        ((sum = word + sum))
+        ((count = count + 1))
+    done
+
+    ((avg = sum / count))
+    averages[${line_count}]=${avg}
+
+    # Now the new string we created is sorted numerically
+    sorted=$(echo -e ${numbers_string} | sort -n)
+
+    # Then we add the median number to our medians array
+    i=0
+    for word in ${sorted}
+    do
+        if [ ${i} == $(((count/2))) ]; then
+            medians[${line_count}]=${word}
+            break
+        fi
+        ((i = i + 1))
+    done
+    ((line_count = line_count + 1))
+
+done
+
+if [ ${is_rows} -eq 1 ]; then
+    echo -e "Average\tMedian"
+
+    count=0
+    for word in ${averages[*]}
+    do
+        echo -e "${averages[count]}\t${medians[count]}"
+        ((count = count + 1))
+    done
+    exit 0
+else
+    echo -e "Averages:"
+    first=1
+    for word in ${averages[*]}
+    do
+        if [ ${first} -eq 1 ]; then
+            echo -e -n "${word}"
+            first=0
+        else
+            echo -e -n "\t${word}"
+        fi
+        ((count = count + 1))
+    done
+    echo
+
+    echo -e "Median:"
+    first=1
+    for word in ${medians[*]}
+    do
+        if [ ${first} -eq 1 ]; then
+            echo -e -n "${word}"
+            first=0
+        else
+            echo -e -n "\t${word}"
+        fi
+        ((count = count + 1))
+    done
+    echo
+
+    exit 0
+fi
