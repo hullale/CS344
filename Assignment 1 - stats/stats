@@ -1,9 +1,4 @@
 #!/bin/bash
-########## Notes for myself ###########
-# 0 is stdin
-# 1 is stdout
-# 2 is stderr
-
 ########## Functions ###########
 show_usage_error ()
 {
@@ -68,7 +63,7 @@ fi
 # If stats should be on columns, translate table so the columns are the new rows and rows are the new columns
 # This will make it so the same stats math can be used to generate the correct data
 if [ ${is_rows} -eq 0 ]; then
-    echo
+    echo -n
 fi
 
 # Now we perform the stats math operations on the data
@@ -106,7 +101,8 @@ do
         ((count = count + 1))
     done
 
-    ((avg = sum / count))
+    before_rounding=$(bc -l <<< "(${sum}/${count})")
+    avg=$(printf "%.0f" "${before_rounding}")
     averages[${line_count}]=${avg}
 
     # Now the new string we created is sorted numerically
@@ -126,6 +122,7 @@ do
 
 done
 
+# Pretty printing for rows calculations
 if [ ${is_rows} -eq 1 ]; then
     echo -e "Average\tMedian"
 
@@ -136,6 +133,7 @@ if [ ${is_rows} -eq 1 ]; then
         ((count = count + 1))
     done
     exit 0
+# Pretty printing for columns calculations
 else
     echo -e "Averages:"
     first=1
