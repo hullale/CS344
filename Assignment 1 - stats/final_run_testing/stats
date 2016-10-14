@@ -1,5 +1,12 @@
 #!/bin/bash
+########## Programmer Info ############
+# Name: Corwin Perren
+# OSU ID: 931759527
+# Assignment: Assignment 1 - stats
+# Filename: stats
+
 ########## Global Variables ############
+# Used for transposing the axis on a two dimensional array
 awk_transpose='{
     for ( i=1; i <= NF; i++ )
         row[i] = row[i]((row[i])?" ":"")$i
@@ -10,44 +17,50 @@ END{
         print row[x]
 }'
 
+# Used to properly round the floating point values
 awk_proper_rounding='
     {printf("%d\n",$1 + 0.5)}
 '
 
+# Stores the PID used to name and delete temp files
 master_pid=$!
 
 ########## Functions ###########
+# Error function for when user input is wrong
 show_usage_error ()
 {
     echo "Usage: stats {-rows|-cols} [file]" >&2
     exit 1
 }
 
+# Error function for when a user feeds in an empty file
 show_empty_file_error ()
 {
     echo "stats: Input empty. Please provide valid input." >&2
     exit 1
 }
 
+# Error function for when the file doesn't exist or can't be accessed
 show_invalid_file_error ()
 {
     echo "stats: Cannot read file. Please verify file exists or check permissions." >&2
     exit 1
 }
 
+# Function to delete temporary files
 remove_temp_if_exist ()
 {
     rm -f ${master_pid}"_"transposed
     rm -f ${master_pid}"_"temp
 }
 
+# Function to handle file cleanup and returning an error when an interrupt happens
 handle_unexpected_termination_error ()
 {
     remove_temp_if_exist
     echo "CTRL+C received. Exiting." >&2
     exit 1
 }
-
 
 #####################################################
 #####################################################
@@ -58,7 +71,6 @@ trap handle_unexpected_termination_error INT HUP TERM
 
 # Determine if we're getting data from stdin or a file, error if neither
 if [ $# -eq 0 ] || [ $# -gt 2 ]; then
-    # No arguments or incorrect, throw an error
     show_usage_error
 elif [ $# -eq 1 ]; then
     is_stdin=1
@@ -76,15 +88,18 @@ else
 fi
 
 # If the input is a file, make sure we can open it and that it exists
-# Also, we assign the file to file descriptor 3 for use with read later
 if [ ${is_stdin} -eq 0 ]; then
     if [ ! -e $2 ] || [ ! -r $2 ] || [ ! -f $2 ]; then
         show_invalid_file_error
     fi
 fi
 
-# If stats should be on columns, translate table so the columns are the new rows and rows are the new columns
+# If stats should be on columns, transpose the table so the columns are the new rows and rows are the new columns
 # This will make it so the same stats math can be used to generate the correct data
+# If the data is coming from stdin and needs to be columns, it makes a temp file, stores the data in it, and then
+# transposes it just as if it were a file being fed in as an argument
+# If the flags here are anything but a standard in piping with rows, it opens the file with a file descriptor for access
+# This also handles showing an error if the input from stdin with -cols is empty
 if [ ${is_rows} -eq 0 ] && [ ${is_stdin} -eq 0 ]; then
     cat $2 | awk "${awk_transpose}" > ${master_pid}"_"transposed
     exec 3<> ${master_pid}"_"transposed
@@ -115,27 +130,32 @@ declare -a medians
 
 while [ 1 ];
 do
+    # We read in the current line
     if [ ${is_stdin} -eq 1 ]; then
         read current_line
     else
         read -u 3 current_line
     fi
 
+    # Here we get the result code from read, which tells us if there's data left
     read_result=$?
 
+    # If there was no data, and we haven't looped yet, the file is empty and we error
+    # Otherwise, it means we've reached the end of the file and it's time to leave the loop
     if [ ${read_result} -eq 1 ] && [ ${line_count} -eq 0 ]; then
         show_empty_file_error
     elif [ ${read_result} -eq 1 ]; then
         break
     fi
 
+    # Initialize variables for doing the calculations
     sum=0
     count=0
     avg=0
     newline="\n"
     numbers_string=""
 
-    # This part does the summing and averaging, and adds the numbers to a new string so it can be parsed by sort
+    # This part does the summing and adds the numbers to a new string so it can be parsed by sort
     for word in ${current_line}
     do
         numbers_string=${numbers_string}${newline}${word}
@@ -143,13 +163,15 @@ do
         ((count = count + 1))
     done
 
+    # Here we use bc and awk to handle the floating point results of division and proper rounding
+    # The avg then gets added to the average array for display later
     avg=$(echo "(${sum}/${count})" | bc -l | awk "${awk_proper_rounding}")
     averages[${line_count}]=${avg}
 
-    # Now the new string we created is sorted numerically
+    # Now the new string we created is sorted numerically so we can easily find the median
     sorted=$(echo -e ${numbers_string} | sort -n)
 
-    # Then we add the median number to our medians array
+    # Then we find and add the median number to our medians array
     i=0
     for word in ${sorted}
     do
@@ -159,11 +181,12 @@ do
         fi
         ((i = i + 1))
     done
-    ((line_count = line_count + 1))
 
+    # Here we increment our line count so we can properly handle empty files
+    ((line_count = line_count + 1))
 done
 
-# Pretty printing for rows calculations
+# For rows display, we print out the header then one value from averages and count, separated by tabs
 if [ ${is_rows} -eq 1 ]; then
     echo -e "Average\tMedian"
 
@@ -173,7 +196,8 @@ if [ ${is_rows} -eq 1 ]; then
         echo -e "${averages[count]}\t${medians[count]}"
         ((count = count + 1))
     done
-# Pretty printing for columns calculations
+# For cols display, we print a header, then all the contents of average, another header, and the contents of median
+# Takes a little more work to print this one and not have extra tabs left over
 else
     echo -e "Averages:"
     first=1
@@ -189,7 +213,7 @@ else
     done
     echo
 
-    echo -e "Median:"
+    echo -e "Medians:"
     first=1
     for word in ${medians[*]}
     do
@@ -204,5 +228,8 @@ else
     echo
 fi
 
+# Assuming we make it this far, the trap handler will not have taken care of our temp files, so we do that now
 remove_temp_if_exist
+
+# Again, having made it this far the program has completed successfully. Exit with no error.
 exit 0
