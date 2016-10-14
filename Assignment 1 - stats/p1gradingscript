@@ -298,4 +298,4 @@ echo
 
 
 cd ..
-#$RM -rf $TESTDIR 2>&1
+$RM -rf $TESTDIR 2>&1
