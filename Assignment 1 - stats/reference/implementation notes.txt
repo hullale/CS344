@@ -1,6 +1,6 @@
 stats {-rows|-cols} [input_file]
 
-Numbers are separated by tabs, lines by newlines
+DONE: Numbers are separated by tabs, lines by newlines
 
 DONE: Check for the correct number of arguments, failure to standard error
 
@@ -14,19 +14,19 @@ Exit value for errors should be 1
 
 You can assume each row will be less than 1000 bytes long, unix limits this, but unlimited numbers of rows
 
-If using temp files, make sure they include process id's in name to allow for simultaneous runs. Remove files when done.
+DONE: If using temp files, make sure they include process id's in name to allow for simultaneous runs. Remove files when done.
 
 DONE: Use the trap command to catch interrupt, hangup, and terminate signals to remove temp files if terminates unexpectedly
 
 Values and results must be whole numbers, round like normal, 7.5 to 8, 7.4 to 7
 
-Calculations must be done with expr
+DONE: Calculations must be done with expr or commandline tools. No other languages
 
-For median, sort values and take the middle value. If even, take the larger of the middle two values.
+DONE: For median, sort values and take the middle value. If even, take the larger of the middle two values.
 
-Must be in a single file.
+DONE: Must be in a single file.
 
-You can return an error if there is no input file
+DONE: You can return an error if there is no input file
 
 HINTS
 
