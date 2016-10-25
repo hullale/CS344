@@ -24,5 +24,14 @@
                 <project-formatting-style>false</project-formatting-style>
             </formatting>
         </data>
+        <spellchecker-wordlist xmlns="http://www.netbeans.org/ns/spellchecker-wordlist/1">
+            <word>Batcheller</word>
+            <word>Covell</word>
+            <word>Graf</word>
+            <word>mutex</word>
+            <word>perrenc</word>
+            <word>txt</word>
+            <word>Weniger</word>
+        </spellchecker-wordlist>
     </configuration>
 </project>

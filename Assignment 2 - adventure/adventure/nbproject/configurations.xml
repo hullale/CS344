@@ -36,7 +36,9 @@
       </toolsSet>
       <compileType>
         <cTool>
+          <standard>2</standard>
           <commandLine>-lpthread</commandLine>
+          <warningLevel>2</warningLevel>
         </cTool>
       </compileType>
       <item path="perrenc.adventure.c" ex="false" tool="0" flavor2="0">

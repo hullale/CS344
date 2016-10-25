@@ -65,7 +65,7 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/adventure: ${OBJECTFILES}
 ${OBJECTDIR}/perrenc.adventure.o: perrenc.adventure.c
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/perrenc.adventure.o perrenc.adventure.c
+	$(COMPILE.c) -g -Wall -std=c89 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/perrenc.adventure.o perrenc.adventure.c
 
 # Subprojects
 .build-subprojects:
