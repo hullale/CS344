@@ -35,6 +35,9 @@
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <compileType>
+        <cTool>
+          <commandLine>-lpthread</commandLine>
+        </cTool>
       </compileType>
       <item path="perrenc.adventure.c" ex="false" tool="0" flavor2="0">
       </item>
