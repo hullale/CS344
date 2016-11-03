@@ -41,6 +41,9 @@ char *potential_room_names[10] = {
 };
 char used_room_names[10][15];
 
+bool start_room_used = false;
+bool end_room_used = false;
+
 /* File access variables */
 FILE *file_pointer_main;
 FILE *file_pointer_time;
@@ -49,14 +52,23 @@ FILE *file_pointer_time;
 pthread_t time_thread_ID;
 bool time_written = false;
 char* time_file_name = "currentTime.txt";
-
 pthread_mutex_t time_mutex;
+
+/* State Handling Variables */
+bool game_over = false;
+bool delete_folder_and_files = true;
 
 /* //////////////////////////////////////// */
 /* ///////// Function Prototypes ////////// */
 /* //////////////////////////////////////// */
 /* Initialization functions */
 void program_init(void);
+void generate_rooms(void);
+
+/* Room Specific Functions*/
+void create_room(char *room_filename, char *room_name, char* room_type);
+void add_connection_to_room(char *room_filename, char *room_name_to_add);
+unsigned int get_number_of_connections_from_room(char *room_filename);
 
 /* Threading Functions */
 void print_time(void);
@@ -67,13 +79,23 @@ void* get_time(void *arguments);
 /* Helper Functions */
 FILE *open_file_local_folder(char *file_name, char *mode);
 int delete_file_local_folder(char *file_name);
+void delete_local_folder_and_files(bool should_delete);
 
 /* ///////////////////////// */
 /* ///////// Main ////////// */
 /* ///////////////////////// */
 int main(int argc, char** argv) {
     program_init();
-    print_time();
+    generate_rooms();
+    
+    while(!game_over){
+        /* Print current screen print_room() */
+        /* Check new user input get_user_input() */
+        /* Process user input move_to_room() */
+        game_over=true;
+    }
+    /*print_time();*/
+    delete_local_folder_and_files(delete_folder_and_files);
     return (EXIT_SUCCESS);
 }
 
@@ -95,6 +117,76 @@ void program_init(void){
     
     /* Create the directory now that we have the string */
     mkdir(rooms_directory_full, 0770);
+}
+
+void generate_rooms(void){
+    create_room(room_1_filename, potential_room_names[0], "START_ROOM");
+    get_number_of_connections_from_room(room_1_filename);
+    add_connection_to_room(room_1_filename, "Dearborn");
+}
+
+/* /////////////////////////////////// */
+/* ///////// User Input Functions //// */
+/* /////////////////////////////////// */
+
+/* /////////////////////////////////// */
+/* ///////// Room Specific Functions //// */
+/* /////////////////////////////////// */
+void create_room(char *room_filename, char *room_name, char* room_type){
+    file_pointer_main = open_file_local_folder(room_filename, "w");
+    assert(file_pointer_main != NULL);
+    
+    fputs("ROOM NAME: ", file_pointer_main);
+    fputs(room_name, file_pointer_main);
+    fputs("\n", file_pointer_main);
+    
+    fputs("ROOM TYPE: ", file_pointer_main);
+    fputs(room_type, file_pointer_main);
+    fclose(file_pointer_main);
+    
+}
+
+void add_connection_to_room(char *room_filename, char *room_name_to_add){
+    char current_line[100];
+    char new_line[100];
+    char* tokenized;
+    long line_position = 0;
+    
+    memset(current_line, '\0', 100);
+    memset(new_line, '\0', 100);
+    
+    file_pointer_main = open_file_local_folder(room_filename, "r+");
+    
+    while(fgets(current_line, 100, file_pointer_main) != NULL){
+        line_position = ftell(file_pointer_main);
+        /* Here I am */
+        tokenized = strtok(current_line, ":");
+        if(strcmp("ROOM TYPE", tokenized) == 0){
+            fseek(file_pointer_main, line_position, SEEK_SET);
+            fgets(new_line, 100, file_pointer_main);
+            printf("%s was found.\n", new_line);
+        }
+    }
+    
+}
+
+unsigned int get_number_of_connections_from_room(char *room_filename){
+    char current_line[100];
+    char* tokenized;
+    unsigned int number_of_rooms = 0;
+    
+    memset(current_line, '\0', 100);
+    
+    file_pointer_main = open_file_local_folder(room_filename, "r");
+    
+    while(fgets(current_line, 100, file_pointer_main) != NULL){
+        tokenized = strtok(current_line, " ");
+        if(strcmp("CONNECTION", tokenized) == 0){
+            number_of_rooms++;
+        }
+    }
+    fclose(file_pointer_main);
+    return number_of_rooms;
 }
 
 /* /////////////////////////////////// */
@@ -140,6 +232,7 @@ void* get_time(void *arguments){
     struct tm *time_as_struct;
     char buffer_size = 50;
     char buffer[buffer_size];
+    memset(buffer, '\0', buffer_size);
     
     time(&current_time_raw);
     time_as_struct = localtime(&current_time_raw);
@@ -175,4 +268,8 @@ int delete_file_local_folder(char *file_name){
     strcat(full_path, "/");
     strcat(full_path, file_name);
     return remove(full_path);
+}
+
+void delete_local_folder_and_files(bool should_delete){
+    
 }
