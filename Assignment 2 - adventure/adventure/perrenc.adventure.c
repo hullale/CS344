@@ -1,7 +1,7 @@
 /* MY HEADER HERE */
-/* ///////////////////////////// */
-/* ///////// Includes ////////// */
-/* ///////////////////////////// */
+/* ///////////////////////////////////////// */
+/* ///////// Includes and Defines ////////// */
+/* ///////////////////////////////////////// */
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,10 +12,23 @@
 #include <assert.h>
 #include <time.h>
 
+#define NUM_ELEMENTS(input) ()
+
 /* ///////////////////////////////////// */
 /* ///////// Global Variables ////////// */
 /* ///////////////////////////////////// */
 /* Room variables */
+
+char* room_filenames[] = {
+    "room_1.txt",
+    "room_2.txt",
+    "room_3.txt",
+    "room_4.txt",
+    "room_5.txt",
+    "room_6.txt",
+    "room_7.txt"
+};
+
 char* room_1_filename = "room_1.txt";
 char* room_2_filename = "room_2.txt";
 char* room_3_filename = "room_3.txt";
@@ -37,12 +50,11 @@ char *potential_room_names[10] = {
     "Valley Library",
     "Memorial Union",
     "Gilbert",
-    "Weniger",
+    "Weniger"
 };
-char used_room_names[10][15];
 
-bool start_room_used = false;
-bool end_room_used = false;
+unsigned int min_connections = 3;
+unsigned int max_connections = 6;
 
 /* File access variables */
 FILE *file_pointer_main;
@@ -69,6 +81,8 @@ void generate_rooms(void);
 void create_room(char *room_filename, char *room_name, char* room_type);
 void add_connection_to_room(char *room_filename, char *room_name_to_add);
 unsigned int get_number_of_connections_from_room(char *room_filename);
+bool is_room_used(char* room_name);
+void get_room_name(char* room_filename, char* room_name_buffer);
 
 /* Threading Functions */
 void print_time(void);
@@ -92,6 +106,7 @@ int main(int argc, char** argv) {
         /* Print current screen print_room() */
         /* Check new user input get_user_input() */
         /* Process user input move_to_room() */
+        /* Check if game over, set if applicable */
         game_over=true;
     }
     /*print_time();*/
@@ -120,9 +135,37 @@ void program_init(void){
 }
 
 void generate_rooms(void){
-    create_room(room_1_filename, potential_room_names[0], "START_ROOM");
-    get_number_of_connections_from_room(room_1_filename);
-    add_connection_to_room(room_1_filename, "Dearborn");
+    time_t t;
+    bool start_used = false;
+    bool end_used = false;
+    
+    char num_rooms = sizeof(room_filenames) / sizeof(room_filenames[0]);
+    
+    srand((unsigned) time(&t));
+    
+    int i;
+    
+    for(i = 0 ; i < num_rooms ; i++){
+        int random_num_name = rand() % 10;
+        char* current_room_name = potential_room_names[random_num_name];
+        
+        while(is_room_used(current_room_name)){
+           random_num_name = rand() % 10;
+           current_room_name = potential_room_names[random_num_name];
+        }
+        printf("Making %s\n\n", current_room_name);
+        if(!start_used){
+            create_room(room_filenames[i], current_room_name, "START_ROOM");
+            start_used = true;
+            
+        }else if(!end_used){
+            create_room(room_filenames[i], current_room_name, "END_ROOM");
+            end_used = true;
+            
+        }else{
+            create_room(room_filenames[i], current_room_name, "MID_ROOM");
+        }
+    }
 }
 
 /* /////////////////////////////////// */
@@ -139,6 +182,7 @@ void create_room(char *room_filename, char *room_name, char* room_type){
     fputs("ROOM NAME: ", file_pointer_main);
     fputs(room_name, file_pointer_main);
     fputs("\n", file_pointer_main);
+
     
     fputs("ROOM TYPE: ", file_pointer_main);
     fputs(room_type, file_pointer_main);
@@ -147,39 +191,50 @@ void create_room(char *room_filename, char *room_name, char* room_type){
 }
 
 void add_connection_to_room(char *room_filename, char *room_name_to_add){
-    char current_line[100];
-    char new_line[100];
-    char* tokenized;
-    long line_position = 0;
+    char output_string_buffer[255];
+    char room_type_save_buffer[255];
+    unsigned int newline_count = 0;
+    unsigned int line_to_insert_at = 0;
+    long insertion_position = 0;
     
-    memset(current_line, '\0', 100);
-    memset(new_line, '\0', 100);
+    memset(output_string_buffer, '\0', 255);
+    memset(room_type_save_buffer, '\0', 255);
+    
+    line_to_insert_at = get_number_of_connections_from_room(room_filename);
+    
+    /* Add on to skip room name line */
+    line_to_insert_at++; 
     
     file_pointer_main = open_file_local_folder(room_filename, "r+");
     
-    while(fgets(current_line, 100, file_pointer_main) != NULL){
-        line_position = ftell(file_pointer_main);
-        /* Here I am */
-        tokenized = strtok(current_line, ":");
-        if(strcmp("ROOM TYPE", tokenized) == 0){
-            fseek(file_pointer_main, line_position, SEEK_SET);
-            fgets(new_line, 100, file_pointer_main);
-            printf("%s was found.\n", new_line);
+    while(newline_count != line_to_insert_at){
+        if(fgetc(file_pointer_main) == '\n'){
+            newline_count++;
         }
     }
+    
+    insertion_position = ftell(file_pointer_main);
+    fgets(room_type_save_buffer, 255, file_pointer_main);
+    fseek(file_pointer_main, insertion_position, SEEK_SET);
+    
+    sprintf(output_string_buffer, "CONNECTION %u: %s\n", line_to_insert_at, \
+            room_name_to_add);
+    fputs(output_string_buffer, file_pointer_main);
+    fputs(room_type_save_buffer, file_pointer_main);
+    fclose(file_pointer_main);
     
 }
 
 unsigned int get_number_of_connections_from_room(char *room_filename){
-    char current_line[100];
+    char current_line[255];
     char* tokenized;
     unsigned int number_of_rooms = 0;
     
-    memset(current_line, '\0', 100);
+    memset(current_line, '\0', 255);
     
     file_pointer_main = open_file_local_folder(room_filename, "r");
     
-    while(fgets(current_line, 100, file_pointer_main) != NULL){
+    while(fgets(current_line, 255, file_pointer_main) != NULL){
         tokenized = strtok(current_line, " ");
         if(strcmp("CONNECTION", tokenized) == 0){
             number_of_rooms++;
@@ -187,6 +242,63 @@ unsigned int get_number_of_connections_from_room(char *room_filename){
     }
     fclose(file_pointer_main);
     return number_of_rooms;
+}
+
+bool is_room_used(char* room_name){
+    char num_rooms = sizeof(room_filenames) / sizeof(room_filenames[0]);
+    char room_name_buffer[255];
+    
+    int i;
+    
+    for(i = 0 ; i < num_rooms ; i++){
+        memset(room_name_buffer, '\0', 255);
+        get_room_name(room_filenames[i], room_name_buffer);
+        printf("Comparing %s to %s\n", room_name, room_name_buffer);
+        if(strcmp(room_name_buffer, room_name) == 0){
+            return true;
+        }
+    }
+    return false;
+}
+
+void get_room_name(char* room_filename, char* room_name_buffer){
+    char current_line[255];
+    char current_line_backup[255];
+    char* tokenized;
+    
+    memset(current_line, '\0', 255);
+    memset(current_line_backup, '\0', 255);
+    
+    file_pointer_main = open_file_local_folder(room_filename, "r");
+    
+    if(file_pointer_main == NULL){
+        strcpy(room_name_buffer, "___NOT_A_ROOM_NAME____");
+        return;
+    }
+    
+    while(fgets(current_line, 255, file_pointer_main) != NULL){
+        strcpy(current_line_backup, current_line);
+        tokenized = strtok(current_line, ":");
+        
+        bool first_entry = true;
+        
+        if(strcmp("ROOM NAME", tokenized) == 0){
+            tokenized = strtok(NULL, " \n");
+            while(tokenized != NULL){
+                if(first_entry){
+                    first_entry = false;
+                }else{
+                  strcat(room_name_buffer, " ");  
+                }
+                
+               strcat(room_name_buffer, tokenized);
+               tokenized = strtok(NULL, " \n");
+            }
+            break;
+        }
+    }
+    
+    fclose(file_pointer_main);
 }
 
 /* /////////////////////////////////// */
