@@ -12,8 +12,6 @@
 #include <assert.h>
 #include <time.h>
 
-#define NUM_ELEMENTS(input) ()
-
 /* ///////////////////////////////////// */
 /* ///////// Global Variables ////////// */
 /* ///////////////////////////////////// */
@@ -28,14 +26,6 @@ char* room_filenames[] = {
     "room_6.txt",
     "room_7.txt"
 };
-
-char* room_1_filename = "room_1.txt";
-char* room_2_filename = "room_2.txt";
-char* room_3_filename = "room_3.txt";
-char* room_4_filename = "room_4.txt";
-char* room_5_filename = "room_5.txt";
-char* room_6_filename = "room_6.txt";
-char* room_7_filename = "room_7.txt";
 
 char* rooms_directory_base = "perrenc.rooms.";
 char rooms_directory_full[255];
@@ -55,6 +45,10 @@ char *potential_room_names[10] = {
 
 unsigned int min_connections = 3;
 unsigned int max_connections = 6;
+
+char* current_room_filename;
+
+char path_taken[255][15];
 
 /* File access variables */
 FILE *file_pointer_main;
@@ -93,7 +87,6 @@ void* get_time(void *arguments);
 /* Helper Functions */
 FILE *open_file_local_folder(char *file_name, char *mode);
 int delete_file_local_folder(char *file_name);
-void delete_local_folder_and_files(bool should_delete);
 
 /* ///////////////////////// */
 /* ///////// Main ////////// */
@@ -101,6 +94,9 @@ void delete_local_folder_and_files(bool should_delete);
 int main(int argc, char** argv) {
     program_init();
     generate_rooms();
+    
+    /* Select the start room as the start point */
+    current_room_filename = room_filenames[0];
     
     while(!game_over){
         /* Print current screen print_room() */
@@ -110,7 +106,6 @@ int main(int argc, char** argv) {
         game_over=true;
     }
     /*print_time();*/
-    delete_local_folder_and_files(delete_folder_and_files);
     return (EXIT_SUCCESS);
 }
 
@@ -132,6 +127,11 @@ void program_init(void){
     
     /* Create the directory now that we have the string */
     mkdir(rooms_directory_full, 0770);
+    
+    int i;
+    for(i = 0 ; i < 1 ; i++){
+        strcpy(path_taken[i], "______________");
+    }
 }
 
 void generate_rooms(void){
@@ -153,7 +153,7 @@ void generate_rooms(void){
            random_num_name = rand() % 10;
            current_room_name = potential_room_names[random_num_name];
         }
-        printf("Making %s\n\n", current_room_name);
+        
         if(!start_used){
             create_room(room_filenames[i], current_room_name, "START_ROOM");
             start_used = true;
@@ -164,6 +164,57 @@ void generate_rooms(void){
             
         }else{
             create_room(room_filenames[i], current_room_name, "MID_ROOM");
+        }
+    }
+    
+    for(i = 0 ; i < num_rooms ; i++){
+        char buffer[255];
+        int used_rooms[6];
+        
+        /* Initialize used rooms array with invalid numbers */
+        int l;
+        for(l = 0 ; l < 6 ; l++){
+            used_rooms[l] = -1;
+        }
+        
+        /* Get random number between min and max connections */
+        int num_connections = (rand() % 4) + min_connections;
+        
+        assert(num_connections >= min_connections);
+        assert(num_connections <= max_connections);
+        
+        int j;
+        for(j = 0 ; j < num_connections ; j++){
+            
+           
+            int room_to_add;
+            
+            bool unused_found = false;
+            
+            while(!unused_found){
+                room_to_add = rand() % 7;
+                if(room_to_add == i){
+                    continue;
+                }
+                
+                bool already_exists = false;
+                int k;
+                for(k = 0 ; k < 6 ; k++){
+                    if(used_rooms[k] == room_to_add){
+                        already_exists = true;
+                        break;
+                    }
+                }
+                
+                if(!already_exists){
+                    unused_found = true;   
+                }                
+            }
+            
+            memset(buffer, '\0', 255);
+            used_rooms[j] = room_to_add;
+            get_room_name(room_filenames[room_to_add], buffer);
+            add_connection_to_room(room_filenames[i], buffer);
         }
     }
 }
@@ -253,7 +304,7 @@ bool is_room_used(char* room_name){
     for(i = 0 ; i < num_rooms ; i++){
         memset(room_name_buffer, '\0', 255);
         get_room_name(room_filenames[i], room_name_buffer);
-        printf("Comparing %s to %s\n", room_name, room_name_buffer);
+        /* printf("Comparing %s to %s\n", room_name, room_name_buffer); */
         if(strcmp(room_name_buffer, room_name) == 0){
             return true;
         }
@@ -380,8 +431,4 @@ int delete_file_local_folder(char *file_name){
     strcat(full_path, "/");
     strcat(full_path, file_name);
     return remove(full_path);
-}
-
-void delete_local_folder_and_files(bool should_delete){
-    
 }
