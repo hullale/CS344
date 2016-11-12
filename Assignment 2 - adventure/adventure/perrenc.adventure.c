@@ -329,6 +329,7 @@ void get_user_input_and_process(void){
         print_time();
     }else{
         printf("\nHUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+        valid_input = true;
     }    
     
     game_over = is_end_room(current_room_filename);
@@ -336,7 +337,7 @@ void get_user_input_and_process(void){
 
 void print_game_over(void){
     printf("\nYOU HAVE FOUND THE END ROOM. CONGRATULATIONS!");
-    printf("\nYOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:", num_steps);
+    printf("\nYOU TOOK %u STEPS. YOUR PATH TO VICTORY WAS:", num_steps);
     
     int i;
     for(i = 0 ; i < num_steps ; i++){
