@@ -49,6 +49,7 @@ unsigned int max_connections = 6;
 char* current_room_filename;
 
 char path_taken[255][15];
+unsigned int num_steps = 0;
 
 /* File access variables */
 FILE *file_pointer_main;
@@ -64,6 +65,10 @@ pthread_mutex_t time_mutex;
 bool game_over = false;
 bool delete_folder_and_files = true;
 
+/* State Variables */
+bool valid_input = false;
+bool first_print = true;
+
 /* //////////////////////////////////////// */
 /* ///////// Function Prototypes ////////// */
 /* //////////////////////////////////////// */
@@ -71,12 +76,19 @@ bool delete_folder_and_files = true;
 void program_init(void);
 void generate_rooms(void);
 
+/* User Input and Printing Functions */
+void print_current_room_and_prompt(void);
+void get_user_input_and_process(void);
+void print_game_over(void);
+
 /* Room Specific Functions*/
 void create_room(char *room_filename, char *room_name, char* room_type);
 void add_connection_to_room(char *room_filename, char *room_name_to_add);
 unsigned int get_number_of_connections_from_room(char *room_filename);
 bool is_room_used(char* room_name);
+bool is_end_room(char* room_filename);
 void get_room_name(char* room_filename, char* room_name_buffer);
+int get_room_index_from_name(char* room_name);
 
 /* Threading Functions */
 void print_time(void);
@@ -95,17 +107,15 @@ int main(int argc, char** argv) {
     program_init();
     generate_rooms();
     
-    /* Select the start room as the start point */
-    current_room_filename = room_filenames[0];
-    
     while(!game_over){
-        /* Print current screen print_room() */
-        /* Check new user input get_user_input() */
-        /* Process user input move_to_room() */
-        /* Check if game over, set if applicable */
-        game_over=true;
+        print_current_room_and_prompt();
+        while(!valid_input){
+          get_user_input_and_process();  
+        }
+        valid_input = false;
+        
     }
-    /*print_time();*/
+    print_game_over();
     return (EXIT_SUCCESS);
 }
 
@@ -132,6 +142,9 @@ void program_init(void){
     for(i = 0 ; i < 1 ; i++){
         strcpy(path_taken[i], "______________");
     }
+    
+    /* Select the start room as the start point */
+    current_room_filename = room_filenames[0];
 }
 
 void generate_rooms(void){
@@ -219,13 +232,122 @@ void generate_rooms(void){
     }
 }
 
-/* /////////////////////////////////// */
-/* ///////// User Input Functions //// */
-/* /////////////////////////////////// */
+/* //////////////////////////////////////////////// */
+/* ///////// User Input and Printing Functions //// */
+/* //////////////////////////////////////////////// */
+void print_current_room_and_prompt(void){
+    char current_line[255];
+    char print_buffer[255];
+    char* tokenized;
+    memset(current_line, '\0', 255);
+    memset(print_buffer, '\0', 255);
+    
+    file_pointer_main = open_file_local_folder(current_room_filename, "r");
+    
+    /* Room Name Printing */
+    fgets(current_line, 255, file_pointer_main);
+    
+    if(first_print){
+        printf("CURRENT LOCATION: ");
+        first_print = false;
+    }else{
+       printf("\nCURRENT LOCATION: "); 
+    }
+    
 
-/* /////////////////////////////////// */
+    tokenized = strtok(current_line, ":");
+    tokenized = strtok(NULL, " \n");
+    
+    bool first_entry = true;
+    while(tokenized != NULL){
+            if(first_entry){
+                first_entry = false;
+            }else{
+              printf(" ");  
+            }
+
+           printf("%s", tokenized);
+           tokenized = strtok(NULL, " \n");
+    }
+    
+    /* Connections Printing */
+    printf("\nPOSSIBLE CONNECTIONS: ");
+    
+    bool printing_connections = true;
+    bool printed_first_connection = false;
+    
+    while(printing_connections){
+        fgets(current_line, 255, file_pointer_main);
+        tokenized = strtok(current_line, " ");
+        
+        if(strcmp(tokenized, "CONNECTION") != 0){
+            printing_connections = false;
+            break;
+        }
+        
+        if(printed_first_connection){
+            printf(", ");
+        }else{
+            printed_first_connection = true;
+        }
+        
+        tokenized = strtok(NULL, ":");
+        tokenized = strtok(NULL, " \n");
+        
+        bool first_entry = true;
+        while(tokenized != NULL){
+                if(first_entry){
+                    first_entry = false;
+                }else{
+                  printf(" ");  
+                }
+
+               printf("%s", tokenized);
+               tokenized = strtok(NULL, " \n");
+        }
+    }
+    printf(".");
+    fclose(file_pointer_main);
+}
+
+void get_user_input_and_process(void){
+    char buffer[255];
+    memset(buffer, '\0', 255);
+    
+    printf("\nWHERE TO? >");
+    fgets(buffer, 255, stdin);
+    buffer[strlen(buffer)-1] = '\0';
+    
+    int room_index = get_room_index_from_name(buffer);
+    
+    if(room_index != -1){
+        strcpy(path_taken[num_steps], buffer);
+        num_steps++;
+        current_room_filename = room_filenames[room_index];
+        valid_input = true;
+    }else if(strcmp(buffer, "time") == 0){
+        print_time();
+    }else{
+        printf("\nHUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+    }    
+    
+    game_over = is_end_room(current_room_filename);
+}
+
+void print_game_over(void){
+    printf("\nYOU HAVE FOUND THE END ROOM. CONGRATULATIONS!");
+    printf("\nYOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:", num_steps);
+    
+    int i;
+    for(i = 0 ; i < num_steps ; i++){
+        printf("\n%s", path_taken[i]);
+    }
+    printf("\n");
+}
+
+/* ////////////////////////////////////// */
 /* ///////// Room Specific Functions //// */
-/* /////////////////////////////////// */
+/* ////////////////////////////////////// */
 void create_room(char *room_filename, char *room_name, char* room_type){
     file_pointer_main = open_file_local_folder(room_filename, "w");
     assert(file_pointer_main != NULL);
@@ -312,13 +434,38 @@ bool is_room_used(char* room_name){
     return false;
 }
 
-void get_room_name(char* room_filename, char* room_name_buffer){
+bool is_end_room(char* room_filename){
     char current_line[255];
-    char current_line_backup[255];
     char* tokenized;
     
     memset(current_line, '\0', 255);
-    memset(current_line_backup, '\0', 255);
+    
+    file_pointer_main = open_file_local_folder(room_filename, "r");
+    
+    while(fgets(current_line, 255, file_pointer_main) != NULL){
+        tokenized = strtok(current_line, ":");
+        
+        if(strcmp("ROOM TYPE", tokenized) == 0){
+            tokenized = strtok(NULL, " \n");
+            if(strcmp(tokenized, "END_ROOM") == 0){
+                fclose(file_pointer_main);  
+                return true;
+            }
+            
+        }
+    }
+    
+    fclose(file_pointer_main);
+    return false;
+}
+
+void get_room_name(char* room_filename, char* room_name_buffer){
+    char current_line[255];
+    /*char current_line_backup[255];*/
+    char* tokenized;
+    
+    memset(current_line, '\0', 255);
+    /*memset(current_line_backup, '\0', 255);*/
     
     file_pointer_main = open_file_local_folder(room_filename, "r");
     
@@ -328,7 +475,7 @@ void get_room_name(char* room_filename, char* room_name_buffer){
     }
     
     while(fgets(current_line, 255, file_pointer_main) != NULL){
-        strcpy(current_line_backup, current_line);
+        /*strcpy(current_line_backup, current_line);*/
         tokenized = strtok(current_line, ":");
         
         bool first_entry = true;
@@ -350,6 +497,21 @@ void get_room_name(char* room_filename, char* room_name_buffer){
     }
     
     fclose(file_pointer_main);
+}
+
+int get_room_index_from_name(char* room_name){
+    char num_rooms = sizeof(room_filenames) / sizeof(room_filenames[0]);
+    char room_name_buffer[255];
+    
+    int i;
+    for(i = 0 ; i < num_rooms ; i++){
+        memset(room_name_buffer, '\0', 255);
+        get_room_name(room_filenames[i], room_name_buffer);
+        if(strcmp(room_name_buffer, room_name) == 0){
+           return i; 
+        }
+    }
+    return -1;
 }
 
 /* /////////////////////////////////// */
