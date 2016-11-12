@@ -1,4 +1,3 @@
-/* MY HEADER HERE */
 /* ///////////////////////////////////////// */
 /* ///////// Includes and Defines ////////// */
 /* ///////////////////////////////////////// */
@@ -16,7 +15,6 @@
 /* ///////// Global Variables ////////// */
 /* ///////////////////////////////////// */
 /* Room variables */
-
 char* room_filenames[] = {
     "room_1.txt",
     "room_2.txt",
@@ -89,6 +87,7 @@ bool is_room_used(char* room_name);
 bool is_end_room(char* room_filename);
 void get_room_name(char* room_filename, char* room_name_buffer);
 int get_room_index_from_name(char* room_name);
+int get_used_indexes(char* room_filename, int* output_list);
 
 /* Threading Functions */
 void print_time(void);
@@ -113,7 +112,6 @@ int main(int argc, char** argv) {
           get_user_input_and_process();  
         }
         valid_input = false;
-        
     }
     print_game_over();
     return (EXIT_SUCCESS);
@@ -138,11 +136,6 @@ void program_init(void){
     /* Create the directory now that we have the string */
     mkdir(rooms_directory_full, 0770);
     
-    int i;
-    for(i = 0 ; i < 1 ; i++){
-        strcpy(path_taken[i], "______________");
-    }
-    
     /* Select the start room as the start point */
     current_room_filename = room_filenames[0];
 }
@@ -156,30 +149,35 @@ void generate_rooms(void){
     
     srand((unsigned) time(&t));
     
+    /* Generate base rooms with room name and room type */
     int i;
-    
     for(i = 0 ; i < num_rooms ; i++){
+        /* Get a random room name */
         int random_num_name = rand() % 10;
         char* current_room_name = potential_room_names[random_num_name];
         
+        /* If that name is already used, generate a unique one */
         while(is_room_used(current_room_name)){
            random_num_name = rand() % 10;
            current_room_name = potential_room_names[random_num_name];
         }
         
+        /* Make the start room if it hasn't been made yet */
         if(!start_used){
             create_room(room_filenames[i], current_room_name, "START_ROOM");
             start_used = true;
-            
+        
+        /* Make the end room if it hasn't been made yet */
         }else if(!end_used){
             create_room(room_filenames[i], current_room_name, "END_ROOM");
             end_used = true;
-            
+        /* Make the middle rooms, if the start and ends rooms are made */
         }else{
             create_room(room_filenames[i], current_room_name, "MID_ROOM");
         }
     }
     
+    /* Generate the room connections for each room */
     for(i = 0 ; i < num_rooms ; i++){
         char buffer[255];
         int used_rooms[6];
@@ -191,19 +189,17 @@ void generate_rooms(void){
         }
         
         /* Get random number between min and max connections */
-        int num_connections = (rand() % 4) + min_connections;
+        int num_connections = (rand() % 4) + min_connections - \
+            get_number_of_connections_from_room(room_filenames[i]);
         
-        assert(num_connections >= min_connections);
-        assert(num_connections <= max_connections);
-        
+        /* Generate the connections for an individual room */
         int j;
         for(j = 0 ; j < num_connections ; j++){
-            
-           
             int room_to_add;
-            
             bool unused_found = false;
             
+            /* Generate connections, making sure they're not itself or other 
+               rooms that have already been used */
             while(!unused_found){
                 room_to_add = rand() % 7;
                 if(room_to_add == i){
@@ -211,6 +207,10 @@ void generate_rooms(void){
                 }
                 
                 bool already_exists = false;
+                
+                get_used_indexes(room_filenames[i], used_rooms);                
+                
+                
                 int k;
                 for(k = 0 ; k < 6 ; k++){
                     if(used_rooms[k] == room_to_add){
@@ -219,15 +219,24 @@ void generate_rooms(void){
                     }
                 }
                 
+                if(get_number_of_connections_from_room(\
+                        room_filenames[room_to_add]) == max_connections){
+                    already_exists = true;
+                }
+                
                 if(!already_exists){
                     unused_found = true;   
                 }                
             }
             
+            /* Once a connection has been deemed valid*/
             memset(buffer, '\0', 255);
-            used_rooms[j] = room_to_add;
             get_room_name(room_filenames[room_to_add], buffer);
             add_connection_to_room(room_filenames[i], buffer);
+            
+            memset(buffer, '\0', 255);
+            get_room_name(room_filenames[i], buffer);
+            add_connection_to_room(room_filenames[room_to_add], buffer);
         }
     }
 }
@@ -513,6 +522,46 @@ int get_room_index_from_name(char* room_name){
         }
     }
     return -1;
+}
+
+int get_used_indexes(char* room_filename, int* output_list){
+    char current_line[255];
+    char used_names[6][15];
+    char* tokenized;
+    int return_index = 0;
+    
+    memset(current_line, '\0', 255);
+    
+    file_pointer_main = open_file_local_folder(room_filename, "r");
+    
+    while(fgets(current_line, 255, file_pointer_main) != NULL){
+        tokenized = strtok(current_line, " ");
+        if(strcmp("CONNECTION", tokenized) == 0){
+            tokenized = strtok(NULL, ":");
+            tokenized = strtok(NULL, " \n");
+            
+            bool first_entry = true;
+            while(tokenized != NULL){
+                    if(first_entry){
+                        first_entry = false;
+                    }else{
+                     strcat(used_names[return_index], " "); 
+                    }
+
+                   strcat(used_names[return_index], tokenized);
+                   tokenized = strtok(NULL, " \n");
+            }
+            return_index++;
+        }
+    }
+    fclose(file_pointer_main);
+    
+    int i;
+    for(i = 0 ; i < return_index ; i++){
+        output_list[i] = get_room_index_from_name(used_names[i]);
+    }
+    
+    return return_index;
 }
 
 /* /////////////////////////////////// */
