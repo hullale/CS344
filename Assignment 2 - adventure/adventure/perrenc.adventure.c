@@ -202,14 +202,16 @@ void generate_rooms(void){
                rooms that have already been used */
             while(!unused_found){
                 room_to_add = rand() % 7;
+                
+                /* Skip if room is itself */
                 if(room_to_add == i){
                     continue;
                 }
                 
+                /* Make sure that we're not adding a room that's already a 
+                   connection */
                 bool already_exists = false;
-                
                 get_used_indexes(room_filenames[i], used_rooms);                
-                
                 
                 int k;
                 for(k = 0 ; k < 6 ; k++){
@@ -219,17 +221,21 @@ void generate_rooms(void){
                     }
                 }
                 
+                /* Make sure the connecting room can handle the reverse 
+                   connection */
                 if(get_number_of_connections_from_room(\
                         room_filenames[room_to_add]) == max_connections){
                     already_exists = true;
                 }
                 
+                /* If all is good, set flag to exit loop */
                 if(!already_exists){
                     unused_found = true;   
                 }                
             }
             
-            /* Once a connection has been deemed valid*/
+            /* Once a connection has been deemed valid, add forward and 
+               backwards connections */
             memset(buffer, '\0', 255);
             get_room_name(room_filenames[room_to_add], buffer);
             add_connection_to_room(room_filenames[i], buffer);
@@ -253,9 +259,7 @@ void print_current_room_and_prompt(void){
     
     file_pointer_main = open_file_local_folder(current_room_filename, "r");
     
-    /* Room Name Printing */
-    fgets(current_line, 255, file_pointer_main);
-    
+    /* Print location header */
     if(first_print){
         printf("CURRENT LOCATION: ");
         first_print = false;
@@ -263,7 +267,8 @@ void print_current_room_and_prompt(void){
        printf("\nCURRENT LOCATION: "); 
     }
     
-
+    /* Strip out and print current room name */
+    fgets(current_line, 255, file_pointer_main);
     tokenized = strtok(current_line, ":");
     tokenized = strtok(NULL, " \n");
     
@@ -274,17 +279,16 @@ void print_current_room_and_prompt(void){
             }else{
               printf(" ");  
             }
-
            printf("%s", tokenized);
            tokenized = strtok(NULL, " \n");
     }
     
-    /* Connections Printing */
+    /* Print possible connections header */
     printf("\nPOSSIBLE CONNECTIONS: ");
     
+    /* Loop through connections and print names with separators */
     bool printing_connections = true;
     bool printed_first_connection = false;
-    
     while(printing_connections){
         fgets(current_line, 255, file_pointer_main);
         tokenized = strtok(current_line, " ");
@@ -323,31 +327,40 @@ void get_user_input_and_process(void){
     char buffer[255];
     memset(buffer, '\0', 255);
     
+    /* Print where to header */
     printf("\nWHERE TO? >");
+    
+    /* Read in newline terminated string from user, and strip out the newline*/
     fgets(buffer, 255, stdin);
     buffer[strlen(buffer)-1] = '\0';
     
+    /* Check input to determine if valid and what it should do*/
     int room_index = get_room_index_from_name(buffer);
-    
     if(room_index != -1){
+        /* Room change is valid, change room and log */
         strcpy(path_taken[num_steps], buffer);
         num_steps++;
         current_room_filename = room_filenames[room_index];
         valid_input = true;
     }else if(strcmp(buffer, "time") == 0){
+        /* Request was to print time, do so */
         print_time();
     }else{
+        /* Bad input was entered, print input error message */
         printf("\nHUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
         valid_input = true;
     }    
     
+    /* Set game over flag to the result of whether we're in the end room */
     game_over = is_end_room(current_room_filename);
 }
 
 void print_game_over(void){
+    /* Print game over header */
     printf("\nYOU HAVE FOUND THE END ROOM. CONGRATULATIONS!");
     printf("\nYOU TOOK %u STEPS. YOUR PATH TO VICTORY WAS:", num_steps);
     
+    /* Print path taken to game over*/
     int i;
     for(i = 0 ; i < num_steps ; i++){
         printf("\n%s", path_taken[i]);
@@ -362,11 +375,12 @@ void create_room(char *room_filename, char *room_name, char* room_type){
     file_pointer_main = open_file_local_folder(room_filename, "w");
     assert(file_pointer_main != NULL);
     
+    /* Print line for the room name */
     fputs("ROOM NAME: ", file_pointer_main);
     fputs(room_name, file_pointer_main);
     fputs("\n", file_pointer_main);
 
-    
+    /* Print line for the room type */
     fputs("ROOM TYPE: ", file_pointer_main);
     fputs(room_type, file_pointer_main);
     fclose(file_pointer_main);
@@ -383,23 +397,27 @@ void add_connection_to_room(char *room_filename, char *room_name_to_add){
     memset(output_string_buffer, '\0', 255);
     memset(room_type_save_buffer, '\0', 255);
     
+    /* Determine where the new connection line will sit */
     line_to_insert_at = get_number_of_connections_from_room(room_filename);
     
-    /* Add on to skip room name line */
+    /* Add one to skip room name line */
     line_to_insert_at++; 
     
     file_pointer_main = open_file_local_folder(room_filename, "r+");
     
+    /* Count out way to where we insert the new connection */
     while(newline_count != line_to_insert_at){
         if(fgetc(file_pointer_main) == '\n'){
             newline_count++;
         }
     }
     
+    /* Save insertion position and make backup of line that will be wiped out */
     insertion_position = ftell(file_pointer_main);
     fgets(room_type_save_buffer, 255, file_pointer_main);
     fseek(file_pointer_main, insertion_position, SEEK_SET);
     
+    /* Save new connection line and add the saved one after it */
     sprintf(output_string_buffer, "CONNECTION %u: %s\n", line_to_insert_at, \
             room_name_to_add);
     fputs(output_string_buffer, file_pointer_main);
@@ -417,6 +435,7 @@ unsigned int get_number_of_connections_from_room(char *room_filename){
     
     file_pointer_main = open_file_local_folder(room_filename, "r");
     
+    /* Loop through the lines and count the number of connections we have */
     while(fgets(current_line, 255, file_pointer_main) != NULL){
         tokenized = strtok(current_line, " ");
         if(strcmp("CONNECTION", tokenized) == 0){
@@ -431,8 +450,8 @@ bool is_room_used(char* room_name){
     char num_rooms = sizeof(room_filenames) / sizeof(room_filenames[0]);
     char room_name_buffer[255];
     
+    /* Loop through all files and strcmp to see if it's been used already */
     int i;
-    
     for(i = 0 ; i < num_rooms ; i++){
         memset(room_name_buffer, '\0', 255);
         get_room_name(room_filenames[i], room_name_buffer);
@@ -452,16 +471,15 @@ bool is_end_room(char* room_filename){
     
     file_pointer_main = open_file_local_folder(room_filename, "r");
     
+    /* Run through file until room type, check if room is end room*/
     while(fgets(current_line, 255, file_pointer_main) != NULL){
         tokenized = strtok(current_line, ":");
-        
         if(strcmp("ROOM TYPE", tokenized) == 0){
             tokenized = strtok(NULL, " \n");
             if(strcmp(tokenized, "END_ROOM") == 0){
                 fclose(file_pointer_main);  
                 return true;
             }
-            
         }
     }
     
@@ -471,19 +489,19 @@ bool is_end_room(char* room_filename){
 
 void get_room_name(char* room_filename, char* room_name_buffer){
     char current_line[255];
-    /*char current_line_backup[255];*/
     char* tokenized;
     
     memset(current_line, '\0', 255);
-    /*memset(current_line_backup, '\0', 255);*/
     
     file_pointer_main = open_file_local_folder(room_filename, "r");
     
+    /* Return immediately if file does not yet exist */
     if(file_pointer_main == NULL){
         strcpy(room_name_buffer, "___NOT_A_ROOM_NAME____");
         return;
     }
     
+    /* Run through file and get room name with special handling for spaces */
     while(fgets(current_line, 255, file_pointer_main) != NULL){
         /*strcpy(current_line_backup, current_line);*/
         tokenized = strtok(current_line, ":");
@@ -513,6 +531,7 @@ int get_room_index_from_name(char* room_name){
     char num_rooms = sizeof(room_filenames) / sizeof(room_filenames[0]);
     char room_name_buffer[255];
     
+    /* Loop through files until the room name is found, return index*/
     int i;
     for(i = 0 ; i < num_rooms ; i++){
         memset(room_name_buffer, '\0', 255);
@@ -534,6 +553,7 @@ int get_used_indexes(char* room_filename, int* output_list){
     
     file_pointer_main = open_file_local_folder(room_filename, "r");
     
+    /* Loop through and get names of all connections in file */
     while(fgets(current_line, 255, file_pointer_main) != NULL){
         tokenized = strtok(current_line, " ");
         if(strcmp("CONNECTION", tokenized) == 0){
@@ -556,6 +576,7 @@ int get_used_indexes(char* room_filename, int* output_list){
     }
     fclose(file_pointer_main);
     
+    /* Get indices from names, and return */
     int i;
     for(i = 0 ; i < return_index ; i++){
         output_list[i] = get_room_index_from_name(used_names[i]);
@@ -609,15 +630,19 @@ void* get_time(void *arguments){
     char buffer[buffer_size];
     memset(buffer, '\0', buffer_size);
     
+    /* Get current time */
     time(&current_time_raw);
     time_as_struct = localtime(&current_time_raw);
     
+    /* Format per specification */
     strftime(buffer, buffer_size, "%-l:%M%P, %A, %B %-e, %Y", time_as_struct);
     
+    /* Write formatted time to file */
     file_pointer_time = open_file_local_folder(time_file_name, "w");
     fprintf(file_pointer_time, "%s", buffer);
     fclose(file_pointer_time);
     
+    /* Lock, update, and unlock mutex variable */
     pthread_mutex_lock(&time_mutex);
     time_written = true;
     pthread_mutex_unlock(&time_mutex);
@@ -628,6 +653,7 @@ void* get_time(void *arguments){
 /* ///////// Helper Functions ////////// */
 /* ///////////////////////////////////// */
 FILE *open_file_local_folder(char *file_name, char *mode){
+    /* Makes common concatenation of file with full path easier */
     char full_path[255];
     memset(full_path, '\0', 255);
     strcat(full_path, rooms_directory_full);
@@ -637,6 +663,7 @@ FILE *open_file_local_folder(char *file_name, char *mode){
 }
 
 int delete_file_local_folder(char *file_name){
+    /* Easy delete that handles concatenation for time file */
     char full_path[255];
     memset(full_path, '\0', 255);
     strcat(full_path, rooms_directory_full);
