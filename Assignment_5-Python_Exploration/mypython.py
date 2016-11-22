@@ -1,3 +1,6 @@
+# Assignment 5 - Python Exploration
+# Corwin Perren
+
 import os
 import random
 
