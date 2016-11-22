@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="Flip 2">
+  <component name="PublishConfigData" autoUpload="Always" serverName="OS-CLASS">
     <serverData>
-      <paths name="Flip 2">
+      <paths name="OS-CLASS">
         <serverdata>
           <mappings>
-            <mapping deploy="/nfs/stak/students/p/perrenc/CS344" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/CS344" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

@@ -2,8 +2,8 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="750e79a8-d6b0-4535-ae52-4f7b69dfc7d2" name="Flip 2" url="http://flip2.engr.oregonstate.edu">
-        <fileTransfer host="flip2.engr.oregonstate.edu" port="22" accessType="SFTP">
+      <webServer id="505abcc6-3caa-4507-a98c-0064fe56bdab" name="OS-CLASS" url="http://os-class.engr.oregonstate.edu">
+        <fileTransfer host="os-class.engr.oregonstate.edu" port="22" rootFolder="/nfs/stak/students/p/perrenc" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
           </advancedOptions>
