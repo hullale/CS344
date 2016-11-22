@@ -13,7 +13,7 @@ NUM_MAX = 42
 def make_file_with_random_letters(filename):
     file = open(filename, "w")
 
-    for i in range(10):
+    for _ in range(10):
         character_decimal = random.randint(ASCII_MIN, ASCII_MAX)
         file.write(chr(character_decimal))
 
@@ -53,4 +53,4 @@ if __name__ == "__main__":
 
     print "First number is: " + str(first_number)
     print "Second number is: " + str(second_number)
-    print "Product of the two numbers is: " + str(first_number+second_number)
+    print "Product of the two numbers is: " + str(first_number*second_number)
