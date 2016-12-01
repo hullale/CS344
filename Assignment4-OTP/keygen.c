@@ -8,11 +8,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define PROGRAM_SUCESS 0
+#define PROGRAM_FAILURE 1
+
 /*
  * 
  */
 int main(int argc, char** argv) {
-    printf("keygen");
-    return (EXIT_SUCCESS);
+    if(argc < 2){
+        fprintf(stderr, "No arguments entered.\nPlease try again.\n");
+        exit(PROGRAM_FAILURE);
+    }
+    
+    
+    
+    
+    return (PROGRAM_SUCESS);
 }
 
