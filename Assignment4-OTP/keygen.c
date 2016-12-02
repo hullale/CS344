@@ -20,11 +20,11 @@ int main(int argc, char** argv) {
         fprintf(stderr, "No arguments entered. Please try again.\n");
         exit(PROGRAM_FAILURE);
     }else if (argc > 2){
-        fprintf(stderr, \
-                "Extra arguments entered. Ignoring all but the first.\n");
+        fprintf(stderr, "Extra arguments entered. Ignoring all but the "
+                        "first.\n");
     }else if(atoi(argv[1]) <= 0){
-        fprintf(stderr, \
-                "Key length too small. Number must be greater than zero.\n");
+        fprintf(stderr, "Key length too small. Number must be greater than "
+                        "zero.\n");
         exit(PROGRAM_FAILURE);
     }
     

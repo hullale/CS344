@@ -12,6 +12,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/wait.h>
 
 #define PROGRAM_SUCCESS 0
 #define PROGRAM_FAILURE 1
@@ -44,8 +45,8 @@ int main(int argc, char** argv) {
     //Get port number, and make sure it's valid
     listen_port_number = atoi(argv[1]);
     if((listen_port_number > PORT_MAX) || (listen_port_number < PORT_MIN)){
-        fprintf(stderr, \
-            "Port out of range! Please choose a different port! Exiting...\n");
+        fprintf(stderr, "Port out of range! Please choose a different port! "
+                        "Exiting...\n");
         exit(PROGRAM_FAILURE);
     }
     
@@ -59,18 +60,29 @@ int main(int argc, char** argv) {
     int bind_result = bind(listen_sfd, (struct sockaddr *)&server_address, \
             sizeof(server_address));
     if(bind_result < 0){
-        fprintf(stderr, \
-                "Failed to bind listening port! "
-                "Please choose a different port! Exiting...\n");
+        fprintf(stderr, "Failed to bind listening port! "
+                        "Please choose a different port! Exiting...\n");
         exit(PROGRAM_FAILURE);
     }
     fprintf(stdout, ":: otp_enc_d :: Bound on port %u.\n", listen_port_number);
     
     
     while(1){
-        break;
+        static int status;
+        waitpid(-1, &status, WNOHANG);
+
+        listen(listen_sfd, 5); //Listen to the port
+
+        //At this point, we have a valid queued connection
+
+        socklen_t clilen = sizeof(client_address);
+        comms_sfd = accept(listen_sfd, 
+        (struct sockaddr *) &client_address,
+        &clilen);
+        if (comms_sfd < 0){
+        }
     }
-    
+
     close(listen_sfd);
     exit(PROGRAM_SUCCESS);
 }
