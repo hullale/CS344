@@ -20,6 +20,8 @@
 #define PORT_MAX 65535
 #define PORT_MIN 0
 
+#define 
+
 int main(int argc, char** argv) {
     int listen_sfd; //sfd == socked_file_descriptor
     int comms_sfd;
@@ -64,22 +66,38 @@ int main(int argc, char** argv) {
                         "Please choose a different port! Exiting...\n");
         exit(PROGRAM_FAILURE);
     }
-    fprintf(stdout, ":: otp_enc_d :: Bound on port %u.\n", listen_port_number);
+    //fprintf(stdout, ":: otp_enc_d :: Bound on port %u.\n", listen_port_number);
     
     
     while(1){
-        static int status;
-        waitpid(-1, &status, WNOHANG);
+        //Call waitpid to kill off any zombie processes. Don't let it block.
+        static int process_status;
+        waitpid(-1, &process_status, WNOHANG);
 
+        //Listen to the port, and allow up to five connections
         listen(listen_sfd, 5); //Listen to the port
 
-        //At this point, we have a valid queued connection
-
-        socklen_t clilen = sizeof(client_address);
-        comms_sfd = accept(listen_sfd, 
-        (struct sockaddr *) &client_address,
-        &clilen);
+        //Block until a valid connection is made, then accept it. 
+        //Also make sure it's accepted correctly
+        socklen_t client_length = sizeof(client_address);
+        comms_sfd = accept(listen_sfd, (struct sockaddr *) &client_address, \
+                           &client_length);
         if (comms_sfd < 0){
+            fprintf(stderr, "Client accept failed. Trying next "
+                            "connection...\n");
+        }else{
+            //We've made a valid connection, so spawn off a new process to
+            //handle it to free up the main thread for accepting a new client.
+            pid_t spawned_pid;
+            spawned_pid = fork();
+            
+            //Only run the child code if it's a child process
+            if(spawned_pid == 0){
+                printf("I'm a child! I'm dying now!\n");
+                //Since this is a child process, once it's done it should die.
+                exit(PROGRAM_SUCCESS);
+            }
+            
         }
     }
 
