@@ -20,7 +20,50 @@
 #define PORT_MAX 65535
 #define PORT_MIN 0
 
-#define 
+#define OTP_ENC_IDENT "#"
+#define OTP_DEC_IDENT "$"
+#define TEXT_DONE "@@"
+#define OTP_FAILURE "%"
+#define OTP_CONTINUE "&"
+
+#define LETTER_OPTIONS 27
+int letter_number_assignment[LETTER_OPTIONS][2] = {
+    'A', 10,
+    'B', 11,
+    'C', 12,
+    'D', 13,
+    'E', 14,
+    'F', 15,
+    'G', 16,
+    'H', 17,
+    'I', 18,
+    'J', 19,
+    'K', 20,
+    'L', 21,
+    'M', 22,
+    'N', 23,
+    'O', 24,
+    'P', 25,
+    'Q', 26,
+    'R', 0,
+    'S', 1,
+    'T', 2,
+    'U', 3,
+    'V', 4,
+    'W', 5,
+    'X', 6,
+    'Y', 7,
+    'Z', 8,
+    ' ', 9
+};
+
+/////////////////////////////////////////
+////////// Function Prototypes //////////
+/////////////////////////////////////////
+int get_mapped_num_from_char(char letter);
+char get_mapped_char_from_num(int number);
+char encode_character(char letter, char key_letter);
+char decode_character(char input_letter, char key_letter);
 
 int main(int argc, char** argv) {
     int listen_sfd; //sfd == socked_file_descriptor
@@ -93,7 +136,118 @@ int main(int argc, char** argv) {
             
             //Only run the child code if it's a child process
             if(spawned_pid == 0){
-                printf("I'm a child! I'm dying now!\n");
+                
+                int read_return;
+                int write_return;
+                unsigned int concat_index = 0;
+                
+                char read_buffer[10];
+                char* concat_buffer = malloc(sizeof(char) * 1000000);
+                memset(read_buffer, '\0', 10);
+                memset(concat_buffer, '\0', sizeof(char) * 1000000);
+                
+                while(strstr(concat_buffer, TEXT_DONE) == NULL){
+                    read_return = read(comms_sfd, read_buffer, 1);
+                    if(read_return != -1){
+                        concat_buffer[concat_index] = read_buffer[0];
+                        concat_index++;
+                    }
+                }
+                
+                //Choose a response appropriate for who is communicating
+                if(strstr(concat_buffer, OTP_ENC_IDENT TEXT_DONE) != NULL){
+                    write_return = write(comms_sfd, OTP_CONTINUE TEXT_DONE, 3);
+                    if(write_return < 0){
+                        fprintf(stderr, "Failed to alert sender. Exiting...\n");
+                        exit(PROGRAM_FAILURE);
+                    }
+                    
+                    //Reset variables to receive data
+                    concat_index = 0;
+                    memset(read_buffer, '\0', 10);
+                    memset(concat_buffer, '\0', sizeof(char) * 1000000);
+                
+                    //Read in data until marker to stop is found
+                    while(strstr(concat_buffer, TEXT_DONE) == NULL){
+                        read_return = read(comms_sfd, read_buffer, 1);
+                        if(read_return != -1){
+                            concat_buffer[concat_index] = read_buffer[0];
+                            concat_index++;
+                        }
+                    }
+                    
+                    //Null out our marker characters
+                    int input_string_length = strlen(concat_buffer);
+                    concat_buffer[input_string_length-1] = '\0';
+                    concat_buffer[input_string_length-2] = '\0';
+                    
+                    //Store this for later use
+                    char* input_text = malloc(sizeof(char) * \
+                                             (strlen(concat_buffer) + 1));
+                    memset(input_text, '\0', sizeof(char) * \
+                                           (strlen(concat_buffer) + 1));
+                    strcpy(input_text, concat_buffer);
+                    
+                    //Reset variables to receive data
+                    concat_index = 0;
+                    memset(read_buffer, '\0', 10);
+                    memset(concat_buffer, '\0', sizeof(char) * 1000000);
+                    
+                    //Read in data until marker to stop is found
+                    while(strstr(concat_buffer, TEXT_DONE) == NULL){
+                        read_return = read(comms_sfd, read_buffer, 1);
+                        if(read_return != -1){
+                            concat_buffer[concat_index] = read_buffer[0];
+                            concat_index++;
+                        }
+                    }
+                    
+                    //Null out our marker characters
+                    input_string_length = strlen(concat_buffer);
+                    concat_buffer[input_string_length-1] = '\0';
+                    concat_buffer[input_string_length-2] = '\0';
+                    
+                    //Store this for later use
+                    char* key_text = malloc(sizeof(char) * \
+                                             (strlen(concat_buffer) + 1));
+                    memset(key_text, '\0', sizeof(char) * \
+                                           (strlen(concat_buffer) + 1));
+                    strcpy(key_text, concat_buffer);
+                    free(concat_buffer);
+                    
+                    for(unsigned long int i = 0 ; i < strlen(input_text) ;\
+                        i++){
+                        char new_char = encode_character(input_text[i], \
+                                                         key_text[i]);
+                        
+                        //printf("%c : %c : %c\n", input_text[i], key_text[i], new_char);
+                        write_return = write(comms_sfd, &new_char, 1);
+                    }
+                    
+                    write_return = write(comms_sfd, TEXT_DONE, 2);
+                    if(write_return < 0){
+                        fprintf(stderr, "Failed to alert sender. Exiting...\n");
+                        exit(PROGRAM_FAILURE);
+                    }
+                    
+                    
+                }else if(strstr(concat_buffer, OTP_DEC_IDENT TEXT_DONE) \
+                         != NULL){
+                    write_return = write(comms_sfd, OTP_FAILURE TEXT_DONE, 3);
+                    if(write_return < 0){
+                        fprintf(stderr, "Failed to alert sender. Exiting...\n");
+                    }
+                    exit(PROGRAM_FAILURE);
+                }else{
+                    fprintf(stderr, "Got bad data. Alerting sender and "
+                                    "exiting...\n");
+                    write_return = write(comms_sfd, OTP_FAILURE TEXT_DONE, 3);
+                    if(write_return < 0){
+                        fprintf(stderr, "Failed to alert sender. Exiting...\n");
+                    }
+                    exit(PROGRAM_FAILURE);
+                }
+                
                 //Since this is a child process, once it's done it should die.
                 exit(PROGRAM_SUCCESS);
             }
@@ -103,5 +257,49 @@ int main(int argc, char** argv) {
 
     close(listen_sfd);
     exit(PROGRAM_SUCCESS);
+}
+
+int get_mapped_num_from_char(char letter){
+    for(int i = 0 ; i < LETTER_OPTIONS ; i++){
+        if(letter == letter_number_assignment[i][0]){
+            return letter_number_assignment[i][1];
+        }
+    }
+    return -1;
+}
+
+char get_mapped_char_from_num(int number){
+    for(int i = 0 ; i < LETTER_OPTIONS ; i++){
+        if(number == letter_number_assignment[i][1]){
+            return letter_number_assignment[i][0];
+        }
+    }
+    return -1;
+}
+
+char encode_character(char input_letter, char key_letter){
+    int letter_mapped = get_mapped_num_from_char(input_letter);
+    int key_mapped = get_mapped_num_from_char(key_letter);
+    
+    int summed = (letter_mapped + key_mapped);
+    
+    if(summed >= LETTER_OPTIONS){
+        summed -= LETTER_OPTIONS;
+    }
+    
+    return get_mapped_char_from_num(summed);
+}
+
+char decode_character(char input_letter, char key_letter){
+    int letter_mapped = get_mapped_num_from_char(input_letter);
+    int key_mapped = get_mapped_num_from_char(key_letter);
+    
+    int subbed = (letter_mapped - key_mapped);
+    
+    if(subbed < 0){
+        subbed += LETTER_OPTIONS;
+    }
+    
+    return get_mapped_char_from_num(subbed);
 }
 
