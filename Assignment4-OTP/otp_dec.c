@@ -59,17 +59,8 @@ int letter_number_assignment[LETTER_OPTIONS][2] = {
     ' ', 9
 };
 
-/////////////////////////////////////////
-////////// Function Prototypes //////////
-/////////////////////////////////////////
 int get_mapped_num_from_char(char letter);
-char get_mapped_char_from_num(int number);
-char encode_character(char letter, char key_letter);
-char decode_character(char input_letter, char key_letter);
 
-/////////////////////////////////////////
-////////// Function Prototypes //////////
-/////////////////////////////////////////
 int main(int argc, char** argv) {
     int comms_sfd;
     unsigned long int comms_port_number;    //0 - 65535
@@ -200,6 +191,7 @@ int main(int argc, char** argv) {
         exit(PROGRAM_FAILURE_PORT);
     }
     
+    //Set up writing and reading variables
     int read_return;
     int write_return;
     unsigned int concat_index = 0;
@@ -209,12 +201,14 @@ int main(int argc, char** argv) {
     memset(read_buffer, '\0', 1);
     memset(concat_buffer, '\0', sizeof(char) * 1000000);
     
+    //Write message to tell the daemon what program we are
     write_return = write(comms_sfd, OTP_DEC_IDENT TEXT_DONE, 3);
     if(write_return < 0){
         fprintf(stderr, "Failed to write data. Exiting...\n");
         exit(PROGRAM_FAILURE);
     }
     
+    //Read the servers response to our message
     while(strstr(concat_buffer, TEXT_DONE) == NULL){
         read_return = read(comms_sfd, read_buffer, 1);
         if(read_return != -1){
@@ -224,24 +218,29 @@ int main(int argc, char** argv) {
     }
 
     if(strstr(concat_buffer, OTP_CONTINUE TEXT_DONE) != NULL){
+        //In this case, the response from the server is to continue
+        //We write the input text to the daemon
         write_return = write(comms_sfd, input_text, strlen(input_text));
         if(write_return < 0){
             fprintf(stderr, "Failed to write data. Exiting...\n");
             exit(PROGRAM_FAILURE);
         }
         
+        //Then we write the ending characters
         write_return = write(comms_sfd, TEXT_DONE, 2);
         if(write_return < 0){
             fprintf(stderr, "Failed to write data. Exiting...\n");
             exit(PROGRAM_FAILURE);
         }
         
+        //Now we write the key file to the daemon
         write_return = write(comms_sfd, key_text, strlen(key_text));
         if(write_return < 0){
             fprintf(stderr, "Failed to write data. Exiting...\n");
             exit(PROGRAM_FAILURE);
         }
         
+        //And the ending characters again
         write_return = write(comms_sfd, TEXT_DONE, 2);
         if(write_return < 0){
             fprintf(stderr, "Failed to write data. Exiting...\n");
@@ -253,6 +252,7 @@ int main(int argc, char** argv) {
         memset(read_buffer, '\0', 10);
         memset(concat_buffer, '\0', sizeof(char) * 1000000);
         
+        //Read in the response from the daemon
         while(strstr(concat_buffer, TEXT_DONE) == NULL){
             read_return = read(comms_sfd, read_buffer, 1);
             if(read_return != -1){
@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
         concat_buffer[input_string_length-1] = '\0';
         concat_buffer[input_string_length-2] = '\0';
         
-        
+        //Print out the cleaned up response from the daemon
         for(int i = 0 ; i < strlen(concat_buffer) ; i++){
             printf("%c", concat_buffer[i]);
         }
@@ -274,9 +274,11 @@ int main(int argc, char** argv) {
         
         
     }else if(strstr(concat_buffer, OTP_FAILURE TEXT_DONE) != NULL){
+        //Print an error if we try to connect to the wrong daemon
         fprintf(stderr, "OTP_DEC may NOT connect to OTP_ENC_D. Exiting...\n");
         exit(PROGRAM_FAILURE);
     }else{
+        //Print an error if we get erroneous data.
         fprintf(stderr, "Got bad data. Exiting...\n");
         exit(PROGRAM_FAILURE);
     }
@@ -291,39 +293,4 @@ int get_mapped_num_from_char(char letter){
         }
     }
     return -1;
-}
-
-char get_mapped_char_from_num(int number){
-    for(int i = 0 ; i < LETTER_OPTIONS ; i++){
-        if(number == letter_number_assignment[i][1]){
-            return letter_number_assignment[i][0];
-        }
-    }
-    return -1;
-}
-
-char encode_character(char input_letter, char key_letter){
-    int letter_mapped = get_mapped_num_from_char(input_letter);
-    int key_mapped = get_mapped_num_from_char(key_letter);
-    
-    int summed = (letter_mapped + key_mapped);
-    
-    if(summed >= LETTER_OPTIONS){
-        summed -= LETTER_OPTIONS;
-    }
-    
-    return get_mapped_char_from_num(summed);
-}
-
-char decode_character(char input_letter, char key_letter){
-    int letter_mapped = get_mapped_num_from_char(input_letter);
-    int key_mapped = get_mapped_num_from_char(key_letter);
-    
-    int subbed = (letter_mapped - key_mapped);
-    
-    if(subbed < 0){
-        subbed += LETTER_OPTIONS;
-    }
-    
-    return get_mapped_char_from_num(subbed);
 }

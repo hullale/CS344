@@ -57,9 +57,6 @@ int letter_number_assignment[LETTER_OPTIONS][2] = {
     ' ', 9
 };
 
-/////////////////////////////////////////
-////////// Function Prototypes //////////
-/////////////////////////////////////////
 int get_mapped_num_from_char(char letter);
 char get_mapped_char_from_num(int number);
 char encode_character(char letter, char key_letter);
@@ -108,9 +105,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Failed to bind listening port! "
                         "Please choose a different port! Exiting...\n");
         exit(PROGRAM_FAILURE);
-    }
-    //fprintf(stdout, ":: otp_enc_d :: Bound on port %u.\n", listen_port_number);
-    
+    }    
     
     while(1){
         //Call waitpid to kill off any zombie processes. Don't let it block.
@@ -137,6 +132,7 @@ int main(int argc, char** argv) {
             //Only run the child code if it's a child process
             if(spawned_pid == 0){
                 
+                //Initialize read write variables
                 int read_return;
                 int write_return;
                 unsigned int concat_index = 0;
@@ -146,6 +142,7 @@ int main(int argc, char** argv) {
                 memset(read_buffer, '\0', 10);
                 memset(concat_buffer, '\0', sizeof(char) * 1000000);
                 
+                //Read initial message telling us who the client is
                 while(strstr(concat_buffer, TEXT_DONE) == NULL){
                     read_return = read(comms_sfd, read_buffer, 1);
                     if(read_return != -1){
@@ -156,6 +153,9 @@ int main(int argc, char** argv) {
                 
                 //Choose a response appropriate for who is communicating
                 if(strstr(concat_buffer, OTP_ENC_IDENT TEXT_DONE) != NULL){
+                    //In this case, the client/server match and we can continue
+                    
+                    //Write a message to the client that we'll continue
                     write_return = write(comms_sfd, OTP_CONTINUE TEXT_DONE, 3);
                     if(write_return < 0){
                         fprintf(stderr, "Failed to alert sender. Exiting...\n");
@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
                     memset(read_buffer, '\0', 10);
                     memset(concat_buffer, '\0', sizeof(char) * 1000000);
                 
-                    //Read in data until marker to stop is found
+                    //Read in first input file from client
                     while(strstr(concat_buffer, TEXT_DONE) == NULL){
                         read_return = read(comms_sfd, read_buffer, 1);
                         if(read_return != -1){
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
                     memset(read_buffer, '\0', 10);
                     memset(concat_buffer, '\0', sizeof(char) * 1000000);
                     
-                    //Read in data until marker to stop is found
+                    //Read in key file from client
                     while(strstr(concat_buffer, TEXT_DONE) == NULL){
                         read_return = read(comms_sfd, read_buffer, 1);
                         if(read_return != -1){
@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
                     concat_buffer[input_string_length-1] = '\0';
                     concat_buffer[input_string_length-2] = '\0';
                     
-                    //Store this for later use
+                    //Store key file for later
                     char* key_text = malloc(sizeof(char) * \
                                              (strlen(concat_buffer) + 1));
                     memset(key_text, '\0', sizeof(char) * \
@@ -215,15 +215,16 @@ int main(int argc, char** argv) {
                     strcpy(key_text, concat_buffer);
                     free(concat_buffer);
                     
+                    //Write the encrypted data to the client
                     for(unsigned long int i = 0 ; i < strlen(input_text) ;\
                         i++){
                         char new_char = encode_character(input_text[i], \
                                                          key_text[i]);
                         
-                        //printf("%c : %c : %c\n", input_text[i], key_text[i], new_char);
                         write_return = write(comms_sfd, &new_char, 1);
                     }
                     
+                    //Write the end of text marker
                     write_return = write(comms_sfd, TEXT_DONE, 2);
                     if(write_return < 0){
                         fprintf(stderr, "Failed to alert sender. Exiting...\n");
@@ -233,12 +234,16 @@ int main(int argc, char** argv) {
                     
                 }else if(strstr(concat_buffer, OTP_DEC_IDENT TEXT_DONE) \
                          != NULL){
+                    //In this case, client and server don't match
+                    
+                    //Write failure message so client exits
                     write_return = write(comms_sfd, OTP_FAILURE TEXT_DONE, 3);
                     if(write_return < 0){
                         fprintf(stderr, "Failed to alert sender. Exiting...\n");
                     }
                     exit(PROGRAM_FAILURE);
                 }else{
+                    //Error and messages for erroneous data
                     fprintf(stderr, "Got bad data. Alerting sender and "
                                     "exiting...\n");
                     write_return = write(comms_sfd, OTP_FAILURE TEXT_DONE, 3);
