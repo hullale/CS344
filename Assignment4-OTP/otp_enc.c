@@ -17,6 +17,7 @@
 
 #define PROGRAM_SUCCESS 0
 #define PROGRAM_FAILURE 1
+#define PROGRAM_FAILURE_PORT 2
 
 #define PORT_MAX 65535
 #define PORT_MIN 0
@@ -162,6 +163,21 @@ int main(int argc, char** argv) {
         exit(PROGRAM_FAILURE);
     }
     
+    //Check files for bad characters
+    for(unsigned long i = 0 ; i < strlen(input_text) ; i ++){
+        if(get_mapped_num_from_char(input_text[i]) == -1){
+            fprintf(stderr, "Bad characters in input text. Exiting...\n");
+            exit(PROGRAM_FAILURE);
+        }
+    }
+    
+    for(unsigned long i = 0 ; i < strlen(key_text) ; i ++){
+        if(get_mapped_num_from_char(key_text[i]) == -1){
+            fprintf(stderr, "Bad characters in key text. Exiting...\n");
+            exit(PROGRAM_FAILURE);
+        }
+    }
+    
     //Create listening socket, check if created successfully
     comms_sfd = socket(AF_INET, SOCK_STREAM, 0);
     if(comms_sfd < 0){
@@ -189,7 +205,7 @@ int main(int argc, char** argv) {
              sizeof(server_address));
     if(connect_result < 0){
         fprintf(stderr, "Connection failed! Is the port correct? Exiting...\n");
-        exit(PROGRAM_FAILURE);
+        exit(PROGRAM_FAILURE_PORT);
     }
     
     int read_return;
@@ -266,7 +282,7 @@ int main(int argc, char** argv) {
         
         
     }else if(strstr(concat_buffer, OTP_FAILURE TEXT_DONE) != NULL){
-        fprintf(stderr, "Incorrect client/server pair. Exiting...\n");
+        fprintf(stderr, "OTP_ENC may NOT connect to OTP_DEC_D. Exiting...\n");
         exit(PROGRAM_FAILURE);
     }else{
         fprintf(stderr, "Got bad data. Exiting...\n");
