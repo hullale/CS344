@@ -12,6 +12,8 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 //Defines
 #define INPUT_LENGTH_MAX 2048
@@ -35,8 +37,10 @@ int main() {
     char user_input_string[INPUT_LENGTH_MAX];
     int input_arg_count = 0;
     char** user_input_array = malloc(INPUT_ARGS_MAX * sizeof(char*));
+    int smallsh_status = 0;
     
     //Assign initial pointers to NULL so cleaning functions are happy
+    //This is for user_input_array
     for(int i = 0 ; i < INPUT_ARGS_MAX ; i++){
         user_input_array[i] = NULL;
     }
@@ -82,9 +86,39 @@ int main() {
         
         //Check what kind of input we got
         if(strcmp(user_input_array[0], "exit") == 0){
+            //We should clean up malloc'd memory and exit
             clean_array(user_input_array);
             free(user_input_array);
             exit(EXIT_SUCCESS);
+            
+        }else if(strcmp(user_input_array[0], "status") == 0){
+            //Print our exit status variable, and continue
+            printf("exit value %d\n", WEXITSTATUS(smallsh_status));
+            fflush(stdout);
+            continue;
+            
+        }else if(strcmp(user_input_array[0], "cd") == 0){
+            //Check if we're going to the home directory, or somewhere else
+            if((user_input_array[1] == NULL) || \
+               (strcmp(user_input_array[1], "~/") == 0) || \
+               (strcmp(user_input_array[1], "~") == 0)){
+                //Change to the user's home directory as requested
+                chdir(getenv("HOME"));
+                
+            }else{
+                //Change to the user's requested directory, error is not
+                //accessible, or doesn't exist
+                int chdir_result = chdir(user_input_array[1]);
+                if(chdir_result == -1){
+                    printf("Cannot change to directory \"%s\"\n", \
+                           user_input_array[1]);
+                    fflush(stdout);
+                }
+            }
+            continue;
+        }else if(user_input_array[0][0] == '#'){
+            //We got a comment line, so do nothing and continue
+            continue;
         }
         
         
